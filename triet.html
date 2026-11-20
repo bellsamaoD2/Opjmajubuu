@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Offline - Triết Học C1</title>
+    <style>
+        :root {
+            --bg-color: #2c123c;
+            --card-bg: #3f1b56;
+            --text-color: #ffffff;
+            --opt-1: #2d70ae;
+            --opt-2: #2d9da6;
+            --opt-3: #efa929;
+            --opt-4: #d5546d;
+            --correct: #28a745;
+            --wrong: #dc3545;
+        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .header {
+            width: 100%;
+            max-width: 850px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .badge {
+            background: #8854c0;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .progress-bar {
+            width: 100%;
+            max-width: 850px;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #00c985;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .quiz-container {
+            width: 100%;
+            max-width: 850px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+        .question-text {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            line-height: 1.5;
+            text-align: center;
+        }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        @media (max-width: 600px) {
+            .options-grid { grid-template-columns: 1fr; }
+        }
+        .option-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            font-size: 17px;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: transform 0.15s, opacity 0.2s;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            line-height: 1.4;
+        }
+        .option-btn:hover:not(:disabled) { transform: translateY(-3px); }
+        .option-btn:active:not(:disabled) { transform: translateY(2px); }
+        .option-btn:disabled { cursor: default; }
+        
+        .opt-0 { background-color: var(--opt-1); }
+        .opt-1 { background-color: var(--opt-2); }
+        .opt-2 { background-color: var(--opt-3); }
+        .opt-3 { background-color: var(--opt-4); }
+
+        .correct-ans { background-color: var(--correct) !important; box-shadow: 0 5px 0 #1e7e34 !important; }
+        .wrong-ans { background-color: var(--wrong) !important; box-shadow: 0 5px 0 #bd2130 !important; opacity: 0.85; }
+        .dimmed { opacity: 0.35; }
+
+        .controls {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .btn {
+            background: #8854c0;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #643a91;
+        }
+        .btn:hover { background: #9b67d3; }
+        .btn-next { background: #00c985; box-shadow: 0 4px 0 #009965; display: none; }
+        .btn-next:hover { background: #00e094; }
+
+        .result-screen { text-align: center; display: none; }
+        .score-big { font-size: 48px; font-weight: bold; color: #00c985; margin: 20px 0; }
+        .review-item {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            text-align: left;
+            border-left: 5px solid var(--wrong);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="badge" id="q-counter">Câu 1 / 40</div>
+        <div style="font-weight: bold; font-size: 18px;">TRIẾT HỌC C1 (OFFLINE)</div>
+        <div class="badge" id="score-board">Điểm: 0</div>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <div class="quiz-container" id="quiz-box">
+        <div class="question-text" id="question">Đang tải câu hỏi...</div>
+        <div class="options-grid" id="options"></div>
+        <div class="controls">
+            <button class="btn" onclick="shuffleAndRestart()">🔀 Xáo trộn & Làm lại</button>
+            <button class="btn btn-next" id="next-btn" onclick="nextQuestion()">Câu tiếp theo ➔</button>
+        </div>
+    </div>
+
+    <div class="quiz-container result-screen" id="result-box">
+        <h2>🎉 Hoàn thành bài luyện tập!</h2>
+        <div class="score-big" id="final-score">0 / 40</div>
+        <p id="accuracy-text" style="font-size: 18px; margin-bottom: 25px;"></p>
+        <button class="btn" onclick="restartQuiz()">🔄 Làm lại từ đầu</button>
+        <button class="btn" style="background: #2d70ae; box-shadow: 0 4px 0 #1e4d78;" onclick="shuffleAndRestart()">🔀 Xáo trộn đề & Làm lại</button>
+        <div id="wrong-list" style="margin-top: 30px;"></div>
+    </div>
+
+    <script>
+        const rawQuestions = [
+            { q: "1. Hình thức nào dưới đây được xem là đỉnh cao của phép biện chứng?", opts: ["Logic học của A-ri-xtốt.", "Phép biện chứng thời cổ đại.", "Thuật ngụy biện trong thời kỳ trung cổ.", "Phép biện chứng duy vật Mác - Lênin."], ans: 3 },
+            { q: "2. Trong các yếu tố sau, yếu tố nào quy định bản chất của thế giới quan tôn giáo?", opts: ["Thái độ.", "Niềm tin.", "Lý tưởng.", "Tri thức."], ans: 1 },
+            { q: "3. Theo quan niệm của các triết gia Hy Lạp cổ đại, triết học là gì?", opts: ["Khoa học về vũ trụ.", "Khoa học về tự nhiên.", "Khoa học của các khoa học.", "Khoa học về xã hội."], ans: 2 },
+            { q: "4. Chọn phương án đúng nhất: Triết học nghiên cứu loại quy luật gì?", opts: ["Quy luật của xã hội.", "Quy luật chung nhất của tự nhiên, xã hội và tư duy.", "Quy luật của tự nhiên.", "Quy luật của tư duy."], ans: 1 },
+            { q: "5. Nghĩa tổng quát của thuật ngữ “triết học” theo người Hy Lạp cổ đại là gì?", opts: ["Tình yêu thần thánh.", "Yêu quý thiên nhiên.", "Yêu mến sự thông thái.", "Tình yêu cuộc sống."], ans: 2 },
+            { q: "6. Học thuyết nào sau đây cho rằng thế giới ra đời từ hai bản nguyên: vật chất và tinh thần?", opts: ["Chủ nghĩa đa nguyên.", "Chủ nghĩa hư vô.", "Chủ nghĩa nhị nguyên.", "Chủ nghĩa nhất nguyên."], ans: 2 },
+            { q: "7. Hãy xác định đúng hai trường phái chính của triết học?", opts: ["Chủ nghĩa đa nguyên và chủ nghĩa nhị nguyên.", "Chủ nghĩa duy cảm và chủ nghĩa duy lý.", "Chủ nghĩa duy vật và chủ nghĩa duy tâm.", "Chủ nghĩa tương đối và chủ nghĩa hoài nghi."], ans: 2 },
+            { q: "8. Triết học ra đời vào khoảng thời gian nào sau đây?", opts: ["Thế kỷ thứ V đến thế kỷ thứ IV trước công nguyên.", "Thế kỷ thứ I sau công nguyên.", "Thế kỷ thứ III đến thế kỷ thứ I trước công nguyên.", "Thế kỷ thứ VIII đến thế kỷ thứ VI trước công nguyên."], ans: 3 },
+            { q: "9. “Chỉ nhìn thấy cây mà không thấy rừng” là nhận xét của Ăngghen về phương pháp triết học nào?", opts: ["Phương pháp khái quát hóa.", "Phương pháp trừu tượng hóa.", "Phương pháp siêu hình.", "Phương pháp biện chứng."], ans: 2 },
+            { q: "10. Đâu là hạt nhân của thế giới quan?", opts: ["Luật pháp.", "Chính trị.", "Đạo đức.", "Triết học."], ans: 3 },
+            { q: "11. Hãy chọn phương án đúng nhất: Điều kiện để triết học ra đời khi nào?", opts: ["Khi con người xuất hiện và có nhu cầu tìm hiểu thế giới xung quanh.", "Khi khoa học tự nhiên phát triển và con người cần có tri thức khái quát để nhận thức và cải tạo thế giới.", "Khi xã hội xuất hiện nhà nước, giai cấp và cần có hệ thống tri thức ở trình độ khái quát hóa, trừu tượng hóa cao.", "Khi tri thức con người đạt đến trình độ nhất định, tư duy đạt trình độ khái quát hóa, trừu tượng hóa; xã hội có sự phân công lao động và phân chia giai cấp xuất hiện."], ans: 3 },
+            { q: "12. Ai là người đầu tiên thống nhất giữa chủ nghĩa duy vật với phép biện chứng làm thành chủ nghĩa duy vật biện chứng và phép biện chứng duy vật?", opts: ["Hêghen.", "Phoiơbắc.", "Mác và Ăngghen.", "Lênin."], ans: 2 },
+            { q: "13. Chọn phương án đúng nhất: Đối tượng nghiên cứu của triết học Mác - Lênin là gì?", opts: ["Nghiên cứu quy luật xã hội.", "Nghiên cứu mối quan hệ giữa vật chất và ý thức.", "Nghiên cứu về mối quan hệ giữa vật chất và ý thức, về những quy luật vận động, phát triển chung nhất của tự nhiên, xã hội và tư duy.", "Nghiên cứu con người."], ans: 2 },
+            { q: "14. Chọn phương án trả lời đúng nhất về một trong ba vai trò chính của triết học Mác - Lênin?", opts: ["Giúp con người trong nhận thức và thực tiễn.", "Định hướng tư tưởng cho con người trong nhận thức và thực tiễn.", "Thế giới quan, phương pháp luận khoa học, cách mạng cho con người trong nhận thức và thực tiễn.", "Giáo dục con người trong nhận thức và thực tiễn."], ans: 2 },
+            { q: "15. Điều gì đã gắn kết hai nhà triết học Phuriê và Xanh Ximông?", opts: ["Đều sáng lập chủ nghĩa duy lý cận đại.", "Đều sáng lập chủ nghĩa xã hội khoa học.", "Đều sáng lập chủ nghĩa xã hội không tưởng Pháp.", "Đều sáng lập chủ nghĩa duy tâm Pháp."], ans: 2 },
+{ q: "16. Triết học Mác - Lênin ra đời vào thời gian nào?", opts: ["Những năm 30 thế kỷ XIX.", "Những năm 60 thế kỷ XIX.", "Những năm 40 thế kỷ XIX.", "Những năm 50 thế kỷ XIX."], ans: 2 },
+{ q: "17. Vì sao triết học Mác gọi là hệ thống triết học mở?", opts: ["Mở ra con đường giải phóng con người.", "Không phải học thuyết đã xong xuôi, cần tiếp tục bổ sung, hoàn thiện, phát triển.", "Mở ra phương pháp nhận thức và cải tạo thế giới.", "Mở ra thời kỳ mới."], ans: 1 },
+{ q: "18. Chủ nghĩa Mác được truyền bá mạnh mẽ vào nước Nga trong giai đoạn nào?", opts: ["Những năm 60 của thế kỷ XIX.", "Những năm 70 đầu thế kỷ XX.", "Những năm 90 của thế kỷ XIX.", "Những năm 80 của thế kỷ XIX."], ans: 3 },
+{ q: "19. Chọn phương án đúng nhất: Sau khi Mác và Ăngghen qua đời, triết học Mác do ai bổ sung và phát triển?", opts: ["Ăngghen.", "Lênin, các Đảng Cộng sản và công nhân trên thế giới.", "Lênin.", "Ăngghen và Lênin."], ans: 1 },
+{ q: "20. Thời kỳ đầu trong sự phát triển tư tưởng triết học, triết gia nào được C. Mác xem là chân lý?", opts: ["Cantơ.", "Senlinh.", "Hêghen.", "Phoiơbắc."], ans: 2 },
+{ q: "21. Triết học Mác kế thừa trực tiếp tiền đề lý luận nào?", opts: ["Triết học Hy Lạp cổ đại.", "Triết học Tây Âu thời trung cổ.", "Triết học cổ điển Đức.", "Triết học phương Tây hiện đại."], ans: 2 },
+{ q: "22. Hãy chỉ ra một trong những đại diện của “Chủ nghĩa xã hội không tưởng Pháp”?", opts: ["Xpinôza.", "Vônte.", "Đềcactơ.", "Phuriê."], ans: 3 },
+{ q: "23. Chọn phương án đúng nhất: Những phát minh nào của khoa học tự nhiên làm cơ sở khoa học cho sự ra đời của triết học Mác - Lênin?", opts: ["Định luật bảo toàn và chuyển hoá năng lượng, học thuyết tế bào, học thuyết tiến hoá.", "Thuyết mặt trời là trung tâm của vũ trụ, định luật bảo toàn và chuyển hoá năng lượng, thuyết tiến hoá.", "Phát hiện ra nguyên tử, phát hiện ra điện tử, định luật bảo toàn và chuyển hoá năng lượng.", "Thuyết tiến hoá, phát hiện ra nguyên tử, học thuyết tế bào."], ans: 0 },
+{ q: "24. Mặt thứ hai vấn đề cơ bản của triết học trả lời câu hỏi gì?", opts: ["Mối quan hệ giữa vật chất và ý thức?", "Con người có thể nhận thức được thế giới hay không?", "Mối quan hệ giữa tư duy và tồn tại?", "Vật chất có trước hay ý thức có trước?"], ans: 1 },
+{ q: "25. Triết học nào ở thời kỳ cổ đại được coi là “khoa học của khoa học”?", opts: ["Triết học Ai Cập.", "Triết học Ấn Độ.", "Triết học Hy Lạp.", "Quy luật của xã hội."], ans: 2 },
+{ q: "26. Chủ nghĩa duy vật thời kỳ cận đại ở phương Tây mang đặc trưng gì?", opts: ["Tầm thường.", "Siêu hình.", "Chất phác.", "Biện chứng."], ans: 1 },
+{ q: "27. Mác đã kế thừa trực tiếp những giá trị duy vật của triết gia nào?", opts: ["Hêghen.", "Cantơ.", "Senling.", "Phoiơbắc."], ans: 3 },
+{ q: "28. Vì sao Mác và Ăngghen sáng lập mà triết học được gọi là triết học Mác - Lênin?", opts: ["Mác sáng lập, Lênin vận dụng thành công.", "Mác và Lênin cùng sáng lập.", "Mác sáng lập, Lênin giáo dục, truyền bá.", "Mác sáng lập, Lênin bảo vệ và phát triển."], ans: 3 },
+{ q: "29. C. Mác và Ph. Ăngghen đề xuất những nguyên lý triết học duy vật biện chứng và duy vật lịch sử trong giai đoạn nào?", opts: ["1848 - 1893", "1841 - 1844", "1844 - 1848", "1848 - 1895"], ans: 2 },
+{ q: "30. Cơ sở phân chia triết học thành chủ nghĩa duy vật và chủ nghĩa duy tâm là dựa trên cách giải quyết nào?", opts: ["Mặt thứ hai vấn đề cơ bản của triết học.", "Vấn đề cơ bản của triết học.", "Vấn đề phương pháp luận của triết học.", "Mặt thứ nhất vấn đề cơ bản của triết học."], ans: 3 },
+{ q: "31. Phép biện chứng duy vật do ai xây dựng?", opts: ["Hêghen.", "Cantơ.", "Mác và Ăngghen.", "Platon."], ans: 2 },
+{ q: "32. Hệ thống quan niệm về thế giới, về con người và vai trò con người trong thế giới đó, gọi là gì?", opts: ["Thế giới quan.", "Nhận thức luận.", "Nhân sinh quan.", "Vũ trụ quan."], ans: 0 },
+{ q: "33. “Triết học treo lơ lửng ở ngoài thế giới, cũng như bộ óc không tồn tại bên ngoài con người” là câu nói của ai?", opts: ["Hêraclit.", "Hêghen.", "Cantơ.", "C. Mác."], ans: 3 },
+{ q: "34. Chọn phương án đúng: Tác phẩm nào đánh dấu sự ra đời của chủ nghĩa Mác - Lênin (trong đó có triết học Mác - Lênin)?", opts: ["Luận Cương về Phoiơbắc (1845).", "Bản thảo kinh tế - Triết học (1844).", "Hệ tư tưởng Đức (1846).", "Tuyên ngôn của Đảng Cộng sản (1848)."], ans: 3 },
+{ q: "35. Triết học Phoiơbắc thuộc về trường phái triết học nào?", opts: ["Duy tâm chủ quan.", "Duy tâm khách quan.", "Duy vật biện chứng.", "Duy vật siêu hình."], ans: 3 },
+{ q: "36. Chọn phương án đúng: Một trong hai phát minh vĩ đại của Mác là gì?", opts: ["Chủ nghĩa duy vật biện chứng.", "Lý luận nhận thức.", "Chủ nghĩa duy vật lịch sử.", "Phép biện chứng duy vật."], ans: 2 },
+{ q: "37. Triết học ra đời sớm nhất ở đâu?", opts: ["Ấn Độ, Châu Phi, Nga.", "Ấn Độ, Trung Quốc, Hy Lạp.", "Ai Cập, Ấn Độ, Trung Quốc.", "Trung Quốc, Ai Cập, Nga."], ans: 1 },
+{ q: "38. Trình tự xuất hiện các hình thức thế giới quan trong lịch sử là như thế nào?", opts: ["Tôn giáo - huyền thoại - triết học.", "Huyền thoại - tôn giáo - triết học.", "Triết học - tôn giáo - huyền thoại.", "Huyền thoại - triết học - tôn giáo."], ans: 1 },
+{ q: "39. Luận điểm: 'Cái gì tồn tại thì hợp lý, cái gì hợp lý thì tồn tại' là của nhà triết học nào?", opts: ["Arixtốt.", "Hêghen.", "Cantơ.", "Phoiơbắc."], ans: 1 },
+{ q: "40. Chức năng cơ bản nhất của triết học Mác - Lênin là gì?", opts: ["Trang bị vũ khí lý luận cách mạng.", "Thế giới quan và phương pháp luận.", "Nhận thức và cải tạo thực tiễn.", "Định hướng tư duy và hành động."], ans: 1 }
+];
+let questions = [...rawQuestions];
+let currentIndex = 0;
+let score = 0;
+let wrongAnswers = [];
+function loadQuestion() {
+const qObj = questions[currentIndex];
+document.getElementById("q-counter").innerText = Câu ${currentIndex + 1} / ${questions.length};
+document.getElementById("score-board").innerText = Điểm: ${score};
+document.getElementById("progress").style.width = ${((currentIndex) / questions.length) * 100}%;
+document.getElementById("question").innerText = qObj.q;
+document.getElementById("next-btn").style.display = "none";
+const optionsDiv = document.getElementById("options");
+optionsDiv.innerHTML = "";
+const labels = ["A. ", "B. ", "C. ", "D. "];
+qObj.opts.forEach((optText, idx) => {
+const btn = document.createElement("button");
+btn.className = option-btn opt-${idx};
+btn.innerText = labels[idx] + optText;
+btn.onclick = () => selectAnswer(idx, btn);
+optionsDiv.appendChild(btn);
+});
+}
+function selectAnswer(selectedIdx, selectedBtn) {
+const qObj = questions[currentIndex];
+const buttons = document.querySelectorAll(".option-btn");
+buttons.forEach((btn, idx) => {
+btn.disabled = true;
+if (idx === qObj.ans) {
+btn.classList.add("correct-ans");
+} else if (idx === selectedIdx) {
+btn.classList.add("wrong-ans");
+} else {
+btn.classList.add("dimmed");
+}
+});
+if (selectedIdx === qObj.ans) {
+score++;
+document.getElementById("score-board").innerText = Điểm: ${score};
+} else {
+wrongAnswers.push({
+question: qObj.q,
+yourAns: qObj.opts[selectedIdx],
+correctAns: qObj.opts[qObj.ans]
+});
+}
+document.getElementById("next-btn").style.display = "inline-block";
+}
+function nextQuestion() {
+currentIndex++;
+if (currentIndex < questions.length) {
+loadQuestion();
+} else {
+showResults();
+}
+}
+function showResults() {
+document.getElementById("progress").style.width = "100%";
+document.getElementById("quiz-box").style.display = "none";
+document.getElementById("result-box").style.display = "block";
+const percent = Math.round((score / questions.length) * 100);
+document.getElementById("final-score").innerText = ${score} / ${questions.length};
+document.getElementById("accuracy-text").innerText = Tỷ lệ chính xác: ${percent}%;
+const wrongList = document.getElementById("wrong-list");
+if (wrongAnswers.length > 0) {
+wrongList.innerHTML = <h3 style="text-align:left; color:#efa929;">📌 Xem lại các câu làm sai (${wrongAnswers.length} câu):</h3>;
+wrongAnswers.forEach(item => {
+wrongList.innerHTML += <div class="review-item"> <div style="font-weight:bold; margin-bottom:5px;">${item.question}</div> <div style="color:#ff8a8a;">❌ Bạn chọn: ${item.yourAns}</div> <div style="color:#7dffb3;">✅ Đáp án đúng: ${item.correctAns}</div> </div>;
+});
+} else {
+wrongList.innerHTML = <h3 style="color:#00c985;">Xuất sắc! Bạn đã trả lời đúng tất cả các câu hỏi!</h3>;
+}
+}
+function restartQuiz() {
+currentIndex = 0;
+score = 0;
+wrongAnswers = [];
+document.getElementById("result-box").style.display = "none";
+document.getElementById("quiz-box").style.display = "block";
+loadQuestion();
+}
+function shuffleAndRestart() {
+questions = [...rawQuestions].sort(() => Math.random() - 0.5);
+restartQuiz();
+}
+// Khởi chạy câu đầu tiên
+loadQuestion();
